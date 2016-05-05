@@ -1,0 +1,127 @@
+DECLARE @startdate AS DATE
+DECLARE @enddate AS DATE
+SET @startdate = '2016-03-01'
+SET @enddate = '2016-03-31'
+
+/* 30 Day Readmissions */
+SELECT	Admit.MedicalRecordNumber,
+		Admit.PatientAccount as AdmitAcctNumber,
+		Admit.AttendingPhysicianName as AdmitAttending,
+		Admit.Division as AdmitDivision,
+		Admit.Specialty as AdmitSpecialty,
+		Admit.ICD10DxCode as AdmitDxCode,
+		T_ICD10DX_CODES.Description AS AdmitDxDescription,
+		Admit.DischargeDate,
+		Readmit.PatientAccount as ReadmitAcctNumber,
+		Readmit.ICD10DxCode as ReadmitDxCode,
+		T_ICD10DX_CODES_2.Description AS ReadmitDxDescription,
+		Readmit.AdmissionDate as ReadmissionDate,
+		Readmit.Division as ReadmitDivision,
+		Readmit.Specialty as ReadmitSpecialty,
+		Readmit.AttendingPhysicianName as ReadmitAttending
+
+FROM	(SELECT T_IP_ENCOUNTER.MedicalRecordNumber,
+				T_IP_ENCOUNTER.PatientAccount,
+				T_IP_ENCOUNTER.AttendingPhysician,
+				DSS.dbo.PHYSICIAN.first_name + ' ' + DSS.dbo.PHYSICIAN.last_name AS AttendingPhysicianName,
+				DSS.dbo.PHYSICIAN.Division,
+				DSS.dbo.PHYSICIAN.Specialty,
+				T_ENCOUNTER_ICD10DX.ICD10DxCode,
+				T_ENCOUNTER_ICD10DX.ICD10DXSequence,
+				T_IP_ENCOUNTER.AdmissionDate,
+				T_IP_ENCOUNTER.DischargeDate,
+				T_IP_ENCOUNTER.PayorCode,
+				T_IP_ENCOUNTER.FinancialClass,
+				T_IP_ENCOUNTER.PayorPlanCode,
+				T_IP_ENCOUNTER.userfield2,
+				T_IP_ENCOUNTER.DischargeStatus
+		
+		 FROM	
+				T_IP_ENCOUNTER
+				LEFT OUTER JOIN T_ENCOUNTER_ICD10DX ON T_IP_ENCOUNTER.PatientAccount = T_ENCOUNTER_ICD10DX.PatientAccount AND T_ENCOUNTER_ICD10DX.ICD10DXSequence = '1'
+				LEFT OUTER JOIN DSS.dbo.PHYSICIAN on T_IP_ENCOUNTER.AttendingPhysician = DSS.dbo.PHYSICIAN.physician_number
+				
+		 WHERE	TotalCharges <> 0
+
+		 GROUP BY T_IP_ENCOUNTER.MedicalRecordNumber,
+				T_IP_ENCOUNTER.PatientAccount,
+				T_IP_ENCOUNTER.AttendingPhysician,
+				DSS.dbo.PHYSICIAN.first_name + ' ' + DSS.dbo.PHYSICIAN.last_name,
+				DSS.dbo.PHYSICIAN.Division,
+				DSS.dbo.PHYSICIAN.Specialty,
+				T_ENCOUNTER_ICD10DX.ICD10DxCode,
+				T_ENCOUNTER_ICD10DX.ICD10DXSequence,
+				T_IP_ENCOUNTER.AdmissionDate,
+				T_IP_ENCOUNTER.DischargeDate,
+				T_IP_ENCOUNTER.PayorCode,
+				T_IP_ENCOUNTER.FinancialClass,
+				T_IP_ENCOUNTER.PayorPlanCode,
+				T_IP_ENCOUNTER.userfield2,
+				T_IP_ENCOUNTER.DischargeStatus) AS Admit
+		 
+		 INNER JOIN
+		 
+		(SELECT T_IP_ENCOUNTER.MedicalRecordNumber,
+				T_IP_ENCOUNTER.PatientAccount,
+				T_IP_ENCOUNTER.AttendingPhysician,
+				DSS.dbo.PHYSICIAN.first_name + ' ' + DSS.dbo.PHYSICIAN.last_name AS AttendingPhysicianName,
+				DSS.dbo.PHYSICIAN.Division,
+				DSS.dbo.PHYSICIAN.Specialty,
+				T_IP_ENCOUNTER.AdmissionDate,
+				T_IP_ENCOUNTER.DischargeDate,
+				T_IP_ENCOUNTER.TotalCharges,
+				T_IP_ENCOUNTER.UserField2,
+				T_IP_ENCOUNTER.FinancialClass,
+				T_IP_ENCOUNTER.PayorCode,
+				T_IP_ENCOUNTER.PayorPlanCode,
+				T_ENCOUNTER_ICD10DX.ICD10DxCode			
+
+		 FROM	T_IP_ENCOUNTER
+				LEFT OUTER JOIN T_ENCOUNTER_ICD10DX ON T_IP_ENCOUNTER.PatientAccount = T_ENCOUNTER_ICD10DX.PatientAccount AND T_ENCOUNTER_ICD10DX.ICD10DXSequence = '1'
+				LEFT OUTER JOIN DSS.dbo.PHYSICIAN on T_IP_ENCOUNTER.AttendingPhysician = DSS.dbo.PHYSICIAN.physician_number
+				
+		 WHERE	TotalCharges <> 0
+
+		 GROUP BY 
+				T_IP_ENCOUNTER.MedicalRecordNumber,
+				T_IP_ENCOUNTER.PatientAccount,
+				T_IP_ENCOUNTER.AttendingPhysician,
+				DSS.dbo.PHYSICIAN.first_name + ' ' + DSS.dbo.PHYSICIAN.last_name,
+				DSS.dbo.PHYSICIAN.Division,
+				DSS.dbo.PHYSICIAN.Specialty,
+				T_IP_ENCOUNTER.UserField2,
+				T_IP_ENCOUNTER.AdmissionDate,
+				T_IP_ENCOUNTER.DischargeDate,
+				T_IP_ENCOUNTER.TotalCharges,
+				T_ENCOUNTER_ICD10DX.ICD10DxCode,	
+				T_IP_ENCOUNTER.FinancialClass,
+				T_IP_ENCOUNTER.PayorCode,
+				T_IP_ENCOUNTER.PayorPlanCode) AS Readmit
+		 
+		 ON		Admit.MedicalRecordNumber = Readmit.MedicalRecordNumber AND Admit.DischargeDate < Readmit.AdmissionDate AND DATEDIFF(day,Admit.DischargeDate, Readmit.AdmissionDate) <= 30
+
+LEFT OUTER JOIN T_ICD10DX_CODES ON Admit.ICD10DxCode = T_ICD10DX_CODES.ICD10DXCode AND Admit.DischargeDate BETWEEN T_ICD10DX_CODES.ICD10DXEffectiveDateFrom AND T_ICD10DX_CODES.ICD10DXEffectiveDateTo
+LEFT OUTER JOIN T_ICD10DX_CODES AS T_ICD10DX_CODES_2 ON Readmit.ICD10DxCode = T_ICD10DX_CODES_2.ICD10DXCode AND Readmit.AdmissionDate BETWEEN T_ICD10DX_CODES_2.ICD10DXEffectiveDateFrom AND T_ICD10DX_CODES_2.ICD10DXEffectiveDateTo
+
+
+WHERE	Readmit.TotalCharges <> 0
+AND		Readmit.AdmissionDate BETWEEN @startdate AND @enddate
+AND		Admit.PatientAccount <> Readmit.PatientAccount
+
+GROUP BY
+		Admit.MedicalRecordNumber, 
+		Admit.PatientAccount,
+		Admit.ICD10DxCode,
+		Admit.DischargeDate,
+		Admit.ICD10DXSequence,
+		T_ICD10DX_CODES.Description,
+		Readmit.PatientAccount,
+		Readmit.ICD10DxCode,
+		T_ICD10DX_CODES_2.Description,
+		Readmit.AdmissionDate,
+		Readmit.Division,
+		Readmit.Specialty,
+		Readmit.AttendingPhysicianName,
+		Admit.AttendingPhysicianName,
+		Admit.Division,
+		Admit.Specialty
