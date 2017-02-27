@@ -1,2 +1,2 @@
-# 30-Day-Readmissions
-SQL Code for 30 Day Readmissions
+# Geometric Mean Length of Stay
+SQL Code for GMLOS
