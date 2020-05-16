@@ -1,20 +1,22 @@
-DECLARE @startdate AS DATE
-DECLARE @enddate AS DATE
-SET @startdate = '2016-07-01'
-SET @enddate = '2016-12-31'
+DECLARE		@startDate AS DATE = '2019-07-01'
+DECLARE		@endDate AS DATE = '2019-12-31'
 
-SELECT  AttendingPhysician, PhysicianLastName,
-		YEAR(DischargeDate) as DischargeYear,
-		MONTH(DischargeDate)as DischargeMonth,
+SELECT  	AttendingPhysician, PhysicianLastName,
+		FORMAT(enc.DischargeDate, 'yyyy-MM') DischargeMonth ,
 		EXP(AVG(LOG(LOS))) AS GMLOS
 
-FROM	T_IP_ENCOUNTER INNER JOIN
-		DSS.dbo.DATE ON T_IP_ENCOUNTER.DischargeDate = DSS.dbo.DATE.date LEFT OUTER JOIN
-		T_PHYSICIAN ON T_IP_ENCOUNTER.AttendingPhysician = T_PHYSICIAN.PhysicianID AND T_PHYSICIAN.FacilityID = '1'
+FROM		T_IP_ENCOUNTER enc
+INNER JOIN	DSS.dbo.DATE dt
+			ON enc.DischargeDate = dt.date
+LEFT JOIN	T_PHYSICIAN ph
+			ON enc.AttendingPhysician = ph.PhysicianID
+			AND ph.FacilityID = '1'
 
-WHERE	TotalCharges <> 0
-		AND LOS > 0
-		AND DischargeDate BETWEEN '2015-07-01' AND '2016-12-31'
+WHERE		enc.TotalCharges <> 0
+AND 		enc.LOS > 0
+AND		enc.DischargeDate BETWEEN @startDate AND @endDate
 		
-GROUP BY AttendingPhysician, PhysicianLastName, YEAR(DischargeDate), MONTH(DischargeDate)
-ORDER BY YEAR(DischargeDate), MONTH(DischargeDate)
+GROUP BY 	AttendingPhysician,
+		PhysicianLastName,
+		FORMAT(enc.DischargeDate, 'yyyy-MM')
+ORDER BY	FORMAT(enc.DischargeDate, 'yyyy-MM')
