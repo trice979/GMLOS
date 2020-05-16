@@ -16,7 +16,7 @@ WHERE		enc.TotalCharges <> 0
 AND 		enc.LOS > 0
 AND		enc.DischargeDate BETWEEN @startDate AND @endDate
 		
-GROUP BY 	AttendingPhysician,
-		PhysicianLastName,
+GROUP BY 	enc.AttendingPhysician,
+		ph.PhysicianLastName,
 		FORMAT(enc.DischargeDate, 'yyyy-MM')
 ORDER BY	FORMAT(enc.DischargeDate, 'yyyy-MM')
