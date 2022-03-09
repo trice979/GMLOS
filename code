@@ -1,7 +1,8 @@
 DECLARE		@startDate AS DATE = '2019-07-01'
 DECLARE		@endDate AS DATE = '2019-12-31'
 
-SELECT  	AttendingPhysician, PhysicianLastName,
+SELECT  	AttendingPhysician,
+		PhysicianLastName,
 		FORMAT(enc.DischargeDate, 'yyyy-MM') DischargeMonth ,
 		EXP(AVG(LOG(LOS))) AS GMLOS
 
